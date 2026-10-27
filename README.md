@@ -114,7 +114,7 @@ python -m jupyter notebook notebooks/music_genre_classification.ipynb
 python -m pytest tests/test_smoke.py -v
 ```
 
-19 focused unit and regression tests verify:
+21 focused unit and regression tests verify:
 - Environment and library dependencies (NumPy, pandas, scikit-learn, Matplotlib, Seaborn, SQLite3)
 - SQLite schema generation, read queries, genre filtering, and UPDATE persistence
 - `write_songs()` return value accuracy, ensuring it returns the exact count of newly inserted records and 0 when duplicates are ignored

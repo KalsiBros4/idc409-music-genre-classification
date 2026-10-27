@@ -126,11 +126,10 @@ def write_songs(conn: sqlite3.Connection, df: pd.DataFrame) -> int:
     """
     subset = df[SONGS_COLUMNS].copy()
     records = subset.to_dict(orient="records")
+    before_changes = conn.total_changes
     with conn:
-        before_count = conn.execute("SELECT COUNT(*) FROM songs;").fetchone()[0]
         conn.executemany(INSERT_SONG, records)
-        after_count = conn.execute("SELECT COUNT(*) FROM songs;").fetchone()[0]
-    return after_count - before_count
+    return conn.total_changes - before_changes
 
 
 def write_model_result(
