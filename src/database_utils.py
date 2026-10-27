@@ -122,13 +122,15 @@ def write_songs(conn: sqlite3.Connection, df: pd.DataFrame) -> int:
     in *df* are ignored.  Rows with duplicate filenames are skipped
     (INSERT OR IGNORE).
 
-    Returns the number of rows inserted.
+    Returns the actual number of records inserted (excluding ignored duplicates).
     """
     subset = df[SONGS_COLUMNS].copy()
     records = subset.to_dict(orient="records")
     with conn:
+        before_count = conn.execute("SELECT COUNT(*) FROM songs;").fetchone()[0]
         conn.executemany(INSERT_SONG, records)
-    return len(records)
+        after_count = conn.execute("SELECT COUNT(*) FROM songs;").fetchone()[0]
+    return after_count - before_count
 
 
 def write_model_result(

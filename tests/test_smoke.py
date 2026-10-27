@@ -135,13 +135,65 @@ def test_create_tables(mem_conn):
 
 
 def test_write_songs(mem_conn):
-    """Rows are inserted into the songs table correctly."""
+    """Rows are inserted into the songs table correctly and return count is accurate."""
     df = _sample_df()
-    dbu.write_songs(mem_conn, df)
+    inserted = dbu.write_songs(mem_conn, df)
+    assert inserted == 2
     result = dbu.read_songs(mem_conn, limit=10)
     assert len(result) == 2
     assert "blues" in result["genre"].values
     assert "classical" in result["genre"].values
+
+
+def test_write_songs_repeated_inserts_return_value(mem_conn):
+    """write_songs returns the actual number of newly inserted rows, ignoring duplicates."""
+    df = _sample_df()
+    inserted_first = dbu.write_songs(mem_conn, df)
+    assert inserted_first == 2
+
+    # Repeated insert of identical rows returns 0
+    inserted_second = dbu.write_songs(mem_conn, df)
+    assert inserted_second == 0
+
+    # Insert batch with 1 existing duplicate and 1 brand-new row
+    mixed_df = pd.DataFrame([
+        {
+            "filename": "blues.00000.wav",  # existing duplicate
+            "genre": "blues",
+            "tempo": 120.0,
+            "chroma_stft_mean": 0.35,
+            "rms_mean": 0.12,
+            "spectral_centroid_mean": 1800.0,
+            "spectral_bandwidth_mean": 2000.0,
+            "rolloff_mean": 3500.0,
+            "zero_crossing_rate_mean": 0.08,
+            "mfcc1_mean": -200.0,
+            "mfcc2_mean": 110.0,
+            "mfcc3_mean": -5.0,
+            "mfcc4_mean": 20.0,
+            "mfcc5_mean": -10.0,
+        },
+        {
+            "filename": "disco.00002.wav",  # brand new
+            "genre": "disco",
+            "tempo": 125.0,
+            "chroma_stft_mean": 0.38,
+            "rms_mean": 0.14,
+            "spectral_centroid_mean": 2100.0,
+            "spectral_bandwidth_mean": 2200.0,
+            "rolloff_mean": 4000.0,
+            "zero_crossing_rate_mean": 0.10,
+            "mfcc1_mean": -180.0,
+            "mfcc2_mean": 105.0,
+            "mfcc3_mean": -4.0,
+            "mfcc4_mean": 18.0,
+            "mfcc5_mean": -9.0,
+        },
+    ])
+    inserted_third = dbu.write_songs(mem_conn, mixed_df)
+    assert inserted_third == 1
+    total_songs = dbu.read_songs(mem_conn, limit=100)
+    assert len(total_songs) == 3
 
 
 def test_read_songs_by_genre(mem_conn):
@@ -166,10 +218,12 @@ def test_update_genre(mem_conn):
 
 
 def test_duplicate_insert_ignored(mem_conn):
-    """Inserting the same filename twice does not create a duplicate row."""
+    """Inserting the same filename twice does not create a duplicate row and returns 0."""
     df = _sample_df()
-    dbu.write_songs(mem_conn, df)
-    dbu.write_songs(mem_conn, df)  # second insert — should be ignored
+    cnt1 = dbu.write_songs(mem_conn, df)
+    assert cnt1 == 2
+    cnt2 = dbu.write_songs(mem_conn, df)  # second insert — should return 0
+    assert cnt2 == 0
     result = dbu.read_songs(mem_conn, limit=100)
     assert len(result) == 2  # still 2 rows
 
@@ -243,3 +297,39 @@ def test_cosine_similarity_import():
     mat = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
     sims = cosine_similarity(mat)
     assert sims.shape == (3, 3)
+
+
+def test_model_selection_uses_cv_macro_f1():
+    """Winner model selection selects highest mean CV macro-F1 on training data."""
+    cv_results = {
+        "Baseline (Majority)": {"mean_f1": 0.018, "std_f1": 0.005},
+        "Logistic Regression": {"mean_f1": 0.717, "std_f1": 0.030},
+        "SVM (RBF)": {"mean_f1": 0.748, "std_f1": 0.025},
+        "Random Forest": {"mean_f1": 0.697, "std_f1": 0.035},
+    }
+    candidate_cv = {k: v for k, v in cv_results.items() if k != "Baseline (Majority)"}
+    best_model = max(candidate_cv, key=lambda k: candidate_cv[k]["mean_f1"])
+    assert best_model == "SVM (RBF)"
+    assert candidate_cv[best_model]["mean_f1"] == 0.748
+
+
+def test_gtzan_feature_schema():
+    """Verify that 60 raw columns yield exactly 57 predictive audio features."""
+    raw_cols = [
+        "filename", "length",
+        "chroma_stft_mean", "chroma_stft_var", "rms_mean", "rms_var",
+        "spectral_centroid_mean", "spectral_centroid_var",
+        "spectral_bandwidth_mean", "spectral_bandwidth_var",
+        "rolloff_mean", "rolloff_var", "zero_crossing_rate_mean", "zero_crossing_rate_var",
+        "harmony_mean", "harmony_var", "perceptr_mean", "perceptr_var", "tempo"
+    ] + [f"mfcc{i}_{stat}" for i in range(1, 21) for stat in ["mean", "var"]] + ["label"]
+
+    assert len(raw_cols) == 60
+    metadata_cols = ["filename", "length"]
+    target_col = "label"
+    feature_cols = [c for c in raw_cols if c not in metadata_cols and c != target_col]
+    assert len(feature_cols) == 57
+    assert "length" not in feature_cols
+    assert "filename" not in feature_cols
+    assert "label" not in feature_cols
+

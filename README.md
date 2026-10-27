@@ -59,7 +59,7 @@ idc409-music-genre-classification/
 | **File used** | `features_30_sec.csv` |
 | **Dimensions** | 1 000 rows × 60 columns |
 | **Genres** | 10: blues, classical, country, disco, hiphop, jazz, metal, pop, reggae, rock |
-| **Features** | 57 numerical audio features + filename + label |
+| **Features** | 60 raw columns: 57 numerical audio features, `length`, `filename`, and `label`. `length` and `filename` are excluded from model inputs, leaving 57 predictive audio features. |
 | **Balance** | Perfectly balanced — 100 tracks per genre |
 | **Licence** | CC BY 4.0 (as published on Kaggle) |
 
@@ -93,10 +93,12 @@ pip install -r requirements.txt
 #    Place  features_30_sec.csv  inside the  data/  folder.
 
 # 5. Launch the notebook
-jupyter notebook notebooks/music_genre_classification.ipynb
-# or:
-jupyter lab
+python -m jupyter notebook notebooks/music_genre_classification.ipynb
 ```
+
+> **Rebuilding & executing the notebook**  
+> To rebuild the notebook from source cells and execute it cleanly end-to-end with full outputs:  
+> `python build_notebook.py --execute`
 
 > **Quick pipeline test (no real data needed)**  
 > Run the synthetic data generator first to verify the full pipeline:  
@@ -108,11 +110,16 @@ jupyter lab
 ## Running the tests
 
 ```bash
-pip install pytest
 python -m pytest tests/test_smoke.py -v
 ```
 
-16 tests cover: environment imports, SQLite write/read/modify operations, and ML pipeline imports.
+19 focused unit and regression tests verify:
+- Environment and library dependencies (NumPy, pandas, scikit-learn, Matplotlib, Seaborn, SQLite3)
+- SQLite schema generation, read queries, genre filtering, and UPDATE persistence
+- `write_songs()` return value accuracy, ensuring it returns the exact count of newly inserted records and 0 when duplicates are ignored
+- Model selection logic, validating that the winning model is selected via mean cross-validation macro F1 on the training set
+- GTZAN column schema validation, confirming 60 raw columns yield 57 predictive audio features
+- scikit-learn Pipeline construction, DummyClassifier baseline training, and cosine similarity calculation
 
 ---
 
@@ -175,19 +182,21 @@ The notebook was executed end-to-end on the real GTZAN dataset (1 000 tracks, 10
 
 ## Feature reduction findings
 
-- **Original feature count**: 57
+- **Original feature count**: 57 (from 60 raw CSV columns, excluding `length`, `filename`, `label`)
 - **Reduced feature count**: 15 (SelectKBest, ANOVA F-score)
-- **Top selected features**: typically include `mfcc1_mean`, `spectral_centroid_mean`, `rolloff_mean`, `zero_crossing_rate_mean`, `mfcc2_mean`, and several other MFCC means.
-- **Result**: performance is mostly preserved with fewer features — details in notebook Section 6.
+- **Top selected features**: include `chroma_stft_mean`, `mfcc1_mean`, `spectral_bandwidth_mean`, `rolloff_mean`, `spectral_centroid_mean`, `spectral_centroid_var`, `mfcc4_mean`, `perceptr_var`, `mfcc2_mean`, `rms_mean`, `chroma_stft_var`.
+- **Result**: on the real GTZAN dataset, reducing features from 57 to 15 caused macro-F1 to decline across all three classifiers (LR: -0.061, SVM: -0.111, RF: -0.051). This demonstrates that the full 57-dimensional acoustic feature space carries valuable complementary information that SelectKBest discards.
 
 ---
 
 ## Genre confusion (audio/AI reflection)
 
-- **Classical** is easiest to separate — distinctly lower tempo, energy, and MFCC 1.
-- **Metal** is well-classified — extremely high spectral centroid and zero-crossing rate.
-- **Reggae ↔ Hip-hop** are most often confused — similar BPM and overlapping spectral features.
-- **Country ↔ Rock** overlap — similar instrumentation produces similar acoustic fingerprints.
+Evidence from the confusion matrix and classification report of the best model (SVM RBF):
+- **Metal** achieved the highest precision (0.94) and F1-score (0.86), though 3 tracks were misclassified as blues due to shared guitar distortion and pentatonic blues roots.
+- **Classical ↔ Jazz** exhibited the highest mutual confusion (3 classical -> jazz, 2 jazz -> classical; 5 total) due to shared dynamic acoustic instrumentation (pianos, upright basses, woodwinds) and lower continuous percussiveness.
+- **Disco** had the lowest recall (0.55, F1 = 0.61), commonly confused with pop (3 tracks), rock (2 tracks), and others due to danceable rhythms, shared instrumentation, and upbeat tempos.
+- **Rock ↔ Country** (2 rock -> country, 1 country -> rock) overlap due to similar band arrangements, guitar textures, and mid-tempo rhythmic structures.
+- **Pop → Reggae** (3 tracks) and **Pop ↔ Classical** (2 tracks) reflect diverse acoustic arrangements within pop.
 
 ---
 

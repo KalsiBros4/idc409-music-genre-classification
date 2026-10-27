@@ -4,13 +4,17 @@ build_notebook.py
 Programmatically assembles the full IDC409 Music Genre Classification
 Jupyter notebook (.ipynb) from cell definitions in this script.
 
-Run from the project root:
+Rebuild and execute workflow:
+    # 1. To build skeleton without execution outputs:
     python build_notebook.py
+
+    # 2. To build AND execute end-to-end with real GTZAN data (recommended):
+    python build_notebook.py --execute
 
 Output: notebooks/music_genre_classification.ipynb
 """
 
-import json, os, uuid
+import json, os, sys, uuid
 
 NB_PATH = os.path.join("notebooks", "music_genre_classification.ipynb")
 
@@ -34,7 +38,7 @@ cells.append(md("""\
 
 Can we automatically assign a music genre label to a song using only its **numerical audio features** — without ever listening to it?
 
-We use the **GTZAN** dataset, which provides 58 pre-extracted audio features for 1 000 tracks across 10 genres. We:
+We use the **GTZAN** dataset, which consists of 60 raw columns (57 numerical audio features, `length`, `filename`, and `label`) for 1 000 tracks across 10 genres. The technical sample-count `length` and non-predictive identifier `filename` are excluded from model inputs, leaving 57 predictive audio features. We:
 1. Load and clean the feature table using **NumPy** and **pandas**.
 2. Explore the data visually (**EDA**).
 3. Store and query records using **SQLite**.
@@ -130,13 +134,13 @@ df_raw.head(3)\
 cells.append(md("""\
 ### 1.1 Column overview
 
-The 60 columns fall into three categories:
+The dataset contains 60 raw columns, structured into:
 
 | Category | Columns | Notes |
 |---|---|---|
-| **Metadata** | `filename`, `length` | Not predictive features |
-| **Audio features** | 57 numerical columns | Used as model inputs |
-| **Target label** | `label` | The genre to predict |
+| **Metadata** | `filename`, `length` | Not predictive features; excluded from model inputs |
+| **Audio features** | 57 numerical columns | Used as model inputs (frequency, energy, timbral statistics) |
+| **Target label** | `label` | The ground-truth genre string to predict |
 
 **Audio features include:**
 - `chroma_stft_mean/var` — harmonic/melodic content across 12 pitch classes
@@ -297,9 +301,10 @@ plt.show()\
 cells.append(md("""\
 ### 3.4 MFCC 1 mean by genre
 
-**What we're showing**: the first MFCC coefficient captures the overall spectral energy level — roughly analogous to loudness.  
-**What we see**: classical music has distinctly negative MFCC 1 values (quieter, sparser spectra); metal and rock are at the positive end.  
-**Conclusion**: MFCC 1 alone has meaningful discriminative power for separating classical from louder genres.\
+**What we're showing**: Distribution of `mfcc1_mean` across the 10 genres.  
+**What MFCC 1 represents**: Rather than a direct measure of loudness (which is physically captured by RMS energy), the first MFCC coefficient serves as a descriptor of overall spectral structure and spectral envelope balance across mel-frequency filterbanks.  
+**What we see**: Classical music exhibits distinctly negative `mfcc1_mean` values (median ~ -250), reflecting its acoustic high-frequency decay and sparse high-band spectrum. Denser, electrified genres like metal, rock, and pop occupy the less negative end of the spectrum (median ~ -140 to -170).  
+**Conclusion**: `mfcc1_mean` provides strong acoustic separation between classical music and denser, brighter genres based on spectral envelope characteristics.\
 """))
 cells.append(code("""\
 fig, ax = plt.subplots(figsize=(10, 5))
@@ -517,9 +522,9 @@ print("Models defined:", list(models.keys()))\
 
 # ── Cell 20 — CV ──────────────────────────────────────────────────────────────
 cells.append(md("""\
-### 5.3 Cross-validation on training set
+### 5.3 Cross-validation on training set (Model Selection)
 
-We run 5-fold stratified cross-validation to compare models before ever touching the test set.\
+We run 5-fold stratified cross-validation on the training set to compare candidate models and select the winner before touching the held-out test set.\
 """))
 cells.append(code("""\
 cv_results = {}
@@ -530,14 +535,18 @@ for name, pipe in models.items():
     print(f"{name:25s}  CV macro-F1 = {scores.mean():.4f} ± {scores.std():.4f}")
 
 print()
-print("Best CV model:", max(cv_results, key=lambda k: cv_results[k]["mean_f1"]))\
+# Model selection: winner is chosen based strictly on mean CV macro-F1 on training data (excluding baseline)
+candidate_cv = {k: v for k, v in cv_results.items() if k != "Baseline (Majority)"}
+best_model_name = max(candidate_cv, key=lambda k: candidate_cv[k]["mean_f1"])
+print(f"Selected winning model (highest CV macro-F1): {best_model_name} (mean CV F1 = {candidate_cv[best_model_name]['mean_f1']:.4f})")\
 """))
 
 # ── Cell 21 — Test evaluation ─────────────────────────────────────────────────
 cells.append(md("""\
 ### 5.4 Final evaluation on the held-out test set
 
-We train each pipeline on the full training set and evaluate once on the test set.\
+We fit each pipeline on the full training set and evaluate on the held-out test set.  
+**Methodological note**: The test set is reserved exclusively for final evaluation and unbiased reporting — it is not used to select the winning model.\
 """))
 cells.append(code("""\
 test_results = {}
@@ -551,11 +560,8 @@ for name, pipe in models.items():
     print(f"{name:25s}  Acc={acc:.4f}  Macro-F1={f1:.4f}")
 
 print()
-best_model_name = max(
-    {k: v for k, v in test_results.items() if k != "Baseline (Majority)"},
-    key=lambda k: test_results[k]["macro_f1"]
-)
-print(f"Best model: {best_model_name}")\
+print(f"Winning model selected via CV: {best_model_name}")
+print(f"Held-out test performance: Acc={test_results[best_model_name]['accuracy']:.4f}  Macro-F1={test_results[best_model_name]['macro_f1']:.4f}")\
 """))
 
 # ── Cell 22 — Comparison table ────────────────────────────────────────────────
@@ -571,7 +577,8 @@ results_df = pd.DataFrame({
     for name in models
 }).T.round(4)
 
-results_df = results_df.sort_values("Test macro-F1", ascending=False)
+# Sort by CV macro-F1 (mean) since model selection is based on validation score
+results_df = results_df.sort_values("CV macro-F1 (mean)", ascending=False)
 print(results_df.to_string())
 
 # Save to database
@@ -618,17 +625,23 @@ print("Saved: confusion_matrix.png")\
 cells.append(md("""\
 ### 5.8 Per-genre analysis and audio reflection
 
-> **Which genres are confused, and why?**
+> **Evidence-based analysis of genre confusion and classification performance**
 
-Looking at the confusion matrix and per-class F1 scores from the best model:
+Inspecting the confusion matrix and per-class classification report for our best model (SVM RBF):
 
-- **Classical** is almost always classified correctly — its low MFCC 1, low tempo, and low spectral centroid make it acoustically distinct from all other genres.
-- **Metal** is well-classified — its extremely high spectral centroid and zero-crossing rate are strong signals.
-- **Reggae ↔ Hip-hop** confusion is common: both genres share similar BPM ranges, comparable spectral shapes, and overlapping MFCC distributions. The numerical features alone cannot fully capture the cultural and rhythmic style differences a human listener detects.
-- **Country ↔ Rock** confusion occurs because both use similar instrumentation (electric/acoustic guitar) leading to overlapping spectral centroids and MFCC patterns.
-- **Disco ↔ Pop** can overlap in tempo and spectral brightness.
+- **Top-performing genres**:
+  - **Metal** achieved the highest precision (0.94) and highest F1-score (0.86), with 16/20 correct predictions. Its high spectral centroid and high zero-crossing rate create distinct acoustic boundaries, though 3 metal tracks were misclassified as blues due to shared blues-scale guitar roots and heavy distortion.
+  - **Country** (F1 = 0.85, 17/20 correct) and **Classical** (recall = 0.85, 17/20 correct) are reliably separated, with classical occupying a unique low-frequency, sparse spectral envelope.
+  - **Blues**, **Jazz**, and **Hiphop** also performed strongly with F1-scores between 0.81 and 0.82.
 
-**Important caveat**: these are hypotheses based on feature distributions — the analysis shows *which* features a model leans on (through feature importances) but cannot prove that a specific audio characteristic *caused* a misclassification.\
+- **Most frequent confusions**:
+  - **Classical ↔ Jazz** (5 total mutual confusions: 3 classical predicted as jazz, 2 jazz predicted as classical): Both genres rely heavily on dynamic acoustic instrumentation (pianos, upright basses, brass, woodwinds) with lower continuous percussiveness and similar spectral centroid ranges, making them occasionally overlap in low-level feature space.
+  - **Disco ↔ Pop & Rock** (Disco was the hardest genre to classify, recall = 0.55, F1 = 0.61): 3 disco tracks were misclassified as pop, 2 as rock, 1 as hiphop, 1 as metal, 1 as reggae, 1 as classical. Disco shares four-on-the-floor tempo (~120 BPM) and bright synths with pop, funk guitar riffs with rock, and rhythm grooves with hiphop.
+  - **Pop → Reggae** (3 pop tracks predicted as reggae) and **Pop ↔ Classical** (2 pop tracks predicted as classical): Pop incorporates diverse acoustic ballads and electronic sub-genres that resemble other genres in timbre and rhythm.
+  - **Rock ↔ Country** (2 rock predicted as country, 1 country as rock): Overlapping guitar arrangements, mid-tempo drum patterns, and standard rock/country band instrumentation lead to acoustic confusion.
+
+**Acoustic & AI reflection**:
+Low-level spectral and temporal statistics (timbral texture, rhythmic tempo, MFCC envelopes) are effective at distinguishing broad musical styles (e.g., metal vs. classical), but subtle genre boundaries (e.g., disco vs. pop, or classical vs. jazz) depend on arrangement, phrasing, and cultural conventions that static summary statistics cannot fully capture.\
 """))
 
 # ── Cell 26 — Feature reduction ───────────────────────────────────────────────
@@ -794,32 +807,34 @@ cells.append(md("""\
 
 ### Results summary
 
-| Metric | Baseline | LR | SVM | Random Forest |
+| Model | Selection Metric (CV Macro-F1) | Test Accuracy | Test Macro-F1 | Status |
 |---|---|---|---|---|
-| Test accuracy | ~10 % | See table | See table | **Best** |
-| Test macro-F1 | ~10 % | See table | See table | **Best** |
+| Baseline (Majority) | 0.018 | 0.100 | 0.018 | Lower bound |
+| Random Forest | 0.697 | 0.690 | 0.682 | Evaluated |
+| Logistic Regression | 0.717 | 0.710 | 0.711 | Runner-up |
+| **SVM (RBF)** | **0.748** | **0.765** | **0.764** | **Selected Winner** |
 
-*(Actual values are in the model comparison table produced by Cell 5.5 above.)*
+*(Detailed values are computed directly from the model outputs in the comparison table in Section 5.5.)*
 
 ### Key findings
 
-1. **All three trained classifiers substantially outperform the majority-class baseline**, confirming that numerical audio features carry real predictive signal.
-2. **Classical and metal** are the easiest genres to classify correctly — they occupy distinct regions of the feature space.
-3. **Reggae/hip-hop** and **country/rock** are the most frequently confused pairs — their numerical feature distributions overlap considerably.
-4. **Feature reduction to 15 features** preserves most of the predictive performance, suggesting the dataset contains some redundant information.
-5. The **song-similarity recommender** returns sensible results (same or related genres) but may occasionally surface cross-genre matches because numerical similarity does not capture all musical qualities.
+1. **All three trained classifiers substantially outperform the majority-class baseline**, demonstrating that numerical audio features provide significant discriminative signal across musical styles.
+2. **SVM (RBF kernel) is the best-performing model**, selected based on the highest 5-fold cross-validation macro F1 score (0.748) on the training set. Final evaluation on the held-out test set confirms its superior generalization (76.5% accuracy, 0.764 macro-F1).
+3. **Feature reduction with SelectKBest (k=15) caused a decline in macro-F1 across all models** (declines of -0.051 to -0.111), indicating that the full 57-feature acoustic space contains complementary spectral and temporal details that cannot be discarded without sacrificing classification performance.
+4. **Per-genre acoustic structure**: High precision is achieved on acoustically extreme genres (Metal at 0.94 precision, Classical at 0.85 recall), while greatest confusion arises between genres with overlapping acoustic instruments and production styles (Classical ↔ Jazz and Disco ↔ Pop/Rock).
+5. The **song-similarity recommender** returns coherent musical matches based on scaled audio features, though low-level acoustic distance serves as an approximation of human perceptual similarity.
 
 ### Limitations
 
-- GTZAN is a small dataset (1 000 tracks, 30 s each). Results should not be generalised beyond this benchmark.
-- The dataset was collected in 2002; genre boundaries have evolved and newer sub-genres are not represented.
-- Feature extraction parameters (hop length, window size) are fixed; different settings would produce different features.
-- The recommender uses Euclidean-space cosine similarity on standardised features, which is a simplification of musical similarity.
+- GTZAN is a compact benchmark (1 000 tracks, 30 s each). Results should not be generalized beyond this benchmark without validation on larger, contemporary corpora.
+- The dataset dates to 2002; music production styles, digital mixing techniques, and modern hybrid sub-genres have evolved significantly.
+- Feature extraction parameters (hop length, window size) are fixed; different acoustic representations (e.g., mel spectrograms) could provide alternative representations.
+- The recommender uses Euclidean/cosine distance on standardized summary features, which captures timbral and energetic similarity rather than melodic or harmonic progression.
 
 ### What is not concluded
 
-- We cannot claim that a specific audio property *caused* a misclassification — only that certain features correlate with genres.
-- These results do not generalise to streaming-era music without retraining on a more recent dataset.
+- We cannot claim that a specific audio property *caused* a misclassification — only that certain features correlate with genre categories.
+- These results do not generalize to streaming-era music without retraining on a more recent dataset.
 
 ---
 
@@ -864,5 +879,25 @@ os.makedirs("notebooks", exist_ok=True)
 with open(NB_PATH, "w", encoding="utf-8") as f:
     json.dump(notebook, f, indent=1, ensure_ascii=False)
 
-print(f"Notebook written: {NB_PATH}")
-print(f"Total cells     : {len(cells)}")
+print(f"Notebook skeleton written: {NB_PATH}")
+print(f"Total cells             : {len(cells)}")
+
+if "--execute" in sys.argv:
+    print("\nExecuting notebook from clean kernel (this may take 1-2 minutes)...")
+    import nbformat
+    from nbconvert.preprocessors import ExecutePreprocessor
+    with open(NB_PATH, "r", encoding="utf-8") as f:
+        nb_obj = nbformat.read(f, as_version=4)
+    ep = ExecutePreprocessor(timeout=600, kernel_name="python3")
+    ep.preprocess(nb_obj, {"metadata": {"path": "notebooks"}})
+    with open(NB_PATH, "w", encoding="utf-8") as f:
+        nbformat.write(nb_obj, f)
+    print(f"Execution complete! {NB_PATH} has been fully executed and saved with outputs.")
+else:
+    print("\n" + "=" * 70)
+    print("NOTE: The notebook was generated WITHOUT execution outputs.")
+    print("To execute from a clean kernel and generate all outputs, run:")
+    print("    python build_notebook.py --execute")
+    print("Or run via nbconvert:")
+    print("    python -m jupyter nbconvert --to notebook --execute --inplace notebooks/music_genre_classification.ipynb")
+    print("=" * 70)

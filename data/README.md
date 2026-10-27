@@ -29,7 +29,7 @@ Place the GTZAN dataset CSV file here before running the notebook.
 | Source | GTZAN Music Genre Classification (Kaggle / George Tzanetakis, 2002) |
 | File | `features_30_sec.csv` |
 | Rows | 1,000 (one per 30-second audio clip) |
-| Columns | 60 (58 audio features + `filename` + `label`) |
+| Columns | 60 raw columns: 57 numerical audio features, `length`, `filename`, and `label`. `length` (a constant sample-count) and `filename` (track identifier) are excluded from model inputs, leaving 57 predictive features. |
 | Classes | 10 genres: blues, classical, country, disco, hiphop, jazz, metal, pop, reggae, rock |
 | Missing values | None expected |
 | Licence | The GTZAN dataset is widely used for academic research. The Kaggle page republishes it under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Verify licence terms before redistribution. |
