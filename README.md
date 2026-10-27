@@ -42,9 +42,10 @@ idc409-music-genre-classification/
 ├── notebooks/
 │   └── music_genre_classification.ipynb  ← MAIN notebook
 ├── src/
-│   └── database_utils.py              ← SQLite helper functions
+│   ├── database_utils.py              ← SQLite helper functions
+│   └── model_utils.py                 ← Model selection and evaluation helpers
 └── tests/
-    └── test_smoke.py                  ← 16 environment + database unit tests
+    └── test_smoke.py                  ← 21 environment, DB, and model unit/regression tests
 ```
 
 ---

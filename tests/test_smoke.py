@@ -22,6 +22,7 @@ import pytest
 # Make src importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import database_utils as dbu
+import model_utils as mu
 
 
 # ---------------------------------------------------------------------------
@@ -299,18 +300,62 @@ def test_cosine_similarity_import():
     assert sims.shape == (3, 3)
 
 
-def test_model_selection_uses_cv_macro_f1():
-    """Winner model selection selects highest mean CV macro-F1 on training data."""
-    cv_results = {
-        "Baseline (Majority)": {"mean_f1": 0.018, "std_f1": 0.005},
-        "Logistic Regression": {"mean_f1": 0.717, "std_f1": 0.030},
-        "SVM (RBF)": {"mean_f1": 0.748, "std_f1": 0.025},
-        "Random Forest": {"mean_f1": 0.697, "std_f1": 0.035},
+def test_select_best_model_uses_cv_not_test_results():
+    """
+    Regression test: verify select_best_model() chooses strictly via CV macro-F1,
+    excluding baseline models, and does NOT select a model based on held-out test scores.
+    Ensures that an implementation selecting via test results would fail.
+    """
+    # Scenario:
+    # Model A: High CV (0.75), Moderate Test (0.71)
+    # Model B: Moderate CV (0.69), High Test (0.84) -> would win if test set leaked!
+    cv_scores = {
+        "Baseline (Majority)": {"mean_f1": 0.018},
+        "Model A (Higher CV)": {"mean_f1": 0.750},
+        "Model B (Higher Test)": {"mean_f1": 0.690},
     }
-    candidate_cv = {k: v for k, v in cv_results.items() if k != "Baseline (Majority)"}
-    best_model = max(candidate_cv, key=lambda k: candidate_cv[k]["mean_f1"])
-    assert best_model == "SVM (RBF)"
-    assert candidate_cv[best_model]["mean_f1"] == 0.748
+    test_scores = {
+        "Baseline (Majority)": {"macro_f1": 0.018},
+        "Model A (Higher CV)": {"macro_f1": 0.710},
+        "Model B (Higher Test)": {"macro_f1": 0.840},
+    }
+
+    # Proper implementation must select Model A based on training CV
+    winner = mu.select_best_model(cv_scores, test_results=test_scores)
+    assert winner == "Model A (Higher CV)"
+    assert winner != "Model B (Higher Test)"
+    assert winner != "Baseline (Majority)"
+
+    # Demonstrate that an erroneous selector maximizing held-out test macro F1 picks Model B:
+    def flawed_test_selector(cv_res, test_res):
+        candidates = {k: v for k, v in test_res.items() if k != "Baseline (Majority)"}
+        return max(candidates, key=lambda k: candidates[k]["macro_f1"])
+
+    flawed_choice = flawed_test_selector(cv_scores, test_scores)
+    assert flawed_choice == "Model B (Higher Test)"
+    assert winner != flawed_choice
+
+
+def test_select_best_model_baseline_ineligible():
+    """Verify that baseline models can never be selected even with artificially high scores."""
+    cv_scores = {
+        "Baseline (Majority)": {"mean_f1": 0.999},
+        "Candidate Model": {"mean_f1": 0.750},
+    }
+    winner = mu.select_best_model(cv_scores)
+    assert winner == "Candidate Model"
+
+
+def test_select_best_model_on_gtzan_cv_results():
+    """Verify select_best_model on actual GTZAN cross-validation results selects SVM (RBF)."""
+    gtzan_cv = {
+        "Baseline (Majority)": {"mean_f1": 0.0182, "std_f1": 0.0000},
+        "Logistic Regression": {"mean_f1": 0.7167, "std_f1": 0.0206},
+        "SVM (RBF)": {"mean_f1": 0.7481, "std_f1": 0.0195},
+        "Random Forest": {"mean_f1": 0.6973, "std_f1": 0.0077},
+    }
+    winner = mu.select_best_model(gtzan_cv)
+    assert winner == "SVM (RBF)"
 
 
 def test_gtzan_feature_schema():
