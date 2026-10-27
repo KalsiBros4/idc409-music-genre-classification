@@ -1,0 +1,60 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment files (never commit secrets)
+.env
+*.env
+*.secret
+
+# Large datasets — download instructions in data/README.md
+data/*.csv
+data/*.zip
+data/*.gz
+data/*.json
+# KEEP the data README
+!data/README.md
+
+# Generated SQLite databases (recreatable from code)
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE / OS artefacts
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+desktop.ini
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Model artefacts (large, regeneratable)
+*.pkl
+*.joblib
+*.h5
+*.onnx
+
+# Temporary files
+*.tmp
+*.log
+*.bak
