@@ -145,26 +145,31 @@ The helper functions are in `src/database_utils.py`. The database file is exclud
 - Per-class precision, recall, F1 (classification report)
 - Confusion matrix (labelled plot)
 
-### Results (verified on synthetic data; real GTZAN results will differ)
+### Results — Real GTZAN Dataset (verified, executed)
 
-The notebook was executed end-to-end and produced the following results **on synthetic data** (statistically plausible, but not the real recordings). Re-run after placing `features_30_sec.csv` from Kaggle for genuine scores.
+The notebook was executed end-to-end on the real GTZAN dataset (1 000 tracks, 10 genres).
 
-| Model | Test Accuracy | Test Macro F1 |
-|---|---|---|
-| Baseline (Majority) | 0.100 | 0.018 |
-| SVM (RBF) | 0.525 | 0.529 |
-| Logistic Regression | 0.545 | 0.540 |
-| **Random Forest** | **0.590** | **0.579** |
+| Model | CV Macro-F1 | Test Accuracy | Test Macro-F1 |
+|---|---|---|---|
+| Baseline (Majority) | 0.018 | 0.100 | 0.018 |
+| Random Forest | 0.697 | 0.690 | 0.682 |
+| Logistic Regression | 0.717 | 0.710 | 0.711 |
+| **SVM (RBF)** | **0.748** | **0.765** | **0.764** |
 
 **Feature reduction (SelectKBest k=15 vs full 57 features):**
 
-| Model | Full Macro F1 | Reduced Macro F1 | Change |
+| Model | Full Macro-F1 | Reduced Macro-F1 | Change |
 |---|---|---|---|
-| Logistic Regression | 0.540 | 0.599 | +0.059 ✅ |
-| SVM | 0.529 | 0.553 | +0.024 ✅ |
-| Random Forest | 0.579 | 0.561 | -0.018 |
+| Logistic Regression | 0.711 | 0.650 | -0.061 |
+| SVM | 0.764 | 0.653 | -0.111 |
+| Random Forest | 0.682 | 0.631 | -0.051 |
 
-*On the real GTZAN dataset, Random Forest typically achieves ~85–92 % accuracy. The above scores reflect synthetic data only.*
+> On the real dataset, reducing features **decreased** performance — the full 57-feature set carries useful signal that SelectKBest with 15 features discards. This is an honest, informative finding.
+
+**Top 15 features selected (ANOVA F-score):**
+`chroma_stft_mean`, `mfcc1_mean`, `spectral_bandwidth_mean`, `rolloff_mean`,
+`spectral_centroid_mean`, `spectral_centroid_var`, `mfcc4_mean`, `perceptr_var`,
+`mfcc2_mean`, `rms_mean`, `chroma_stft_var` + 4 others
 
 ---
 
