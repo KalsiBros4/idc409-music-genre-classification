@@ -66,18 +66,15 @@ idc409-music-genre-classification/
 
 The dataset file is **not committed** to this repository (redistribution terms). See `data/README.md` for download instructions.
 
-### Extended Dataset — Indian Music Genres (GACMIS)
+### Extended Datasets — Indian & Punjabi Music Genres (GACMIS + Navrasa)
 
 | Field | Value |
 |---|---|
-| **Name** | GACMIS (Genre Automated Classification of Indian Songs) |
-| **Source URL** | https://github.com/ujjwalll/GACMIS |
-| **Format** | `.opus` audio tracks (30s centered window extracted into the same 57 audio features) |
-| **Tracks** | 598 tracks across 7 Indian/Hindi genres |
-| **Genres** | 7: `bollywood_rap` (100), `ghazal` (97), `garhwali` (90), `sufi` (84), `bollywood_romantic` (81), `bhojpuri` (78), `bhajan` (68) |
-| **Combined total** | 1 598 rows × 60 columns (17 genres when merged with GTZAN) |
-| **Combined results** | SVM (RBF): CV Macro-F1 = 0.6719, Test Accuracy = 0.6875, Test Macro-F1 = 0.6806 |
-
+| **Indian Genres (GACMIS)** | https://github.com/ujjwalll/GACMIS — 598 `.opus` tracks across 7 genres: `bollywood_rap` (100), `ghazal` (97), `garhwali` (90), `sufi` (84), `bollywood_romantic` (81), `bhojpuri` (78), `bhajan` (68) |
+| **Punjabi Pop (Navrasa 5000)** | https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset (`India/Punjabi_Pop.zip`, CC0-1.0) — 100 `.wav` clips extracted as `punjabi` |
+| **Feature Extraction** | 30s centered audio clip extracted into the same 57 GTZAN numerical features |
+| **Combined total** | 1 698 rows × 60 columns (18 genres when merged with GTZAN) |
+| **Combined results** | SVM (RBF): CV Macro-F1 = 0.6481, Test Accuracy = 0.6765, Test Macro-F1 = 0.6726 |
 ---
 
 ## Setup and installation
