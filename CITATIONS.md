@@ -18,6 +18,23 @@ This file records all datasets, documentation, papers, and third-party code cons
 | **Licence** | CC BY 4.0 (as published on Kaggle) |
 | **Usage in project** | The file `features_30_sec.csv` is used as the primary dataset. Not redistributed; users download it directly from Kaggle. |
 
+### GACMIS (Indian Music Genres)
+
+| Field | Detail |
+|---|---|
+| **Title** | GACMIS — Genre Automated Classification of Indian Songs |
+| **URL** | https://github.com/ujjwalll/GACMIS |
+| **Usage in project** | Optional extended dataset providing 598 `.opus` tracks across 7 Indian/Hindi genres (`bollywood_rap`, `bollywood_romantic`, `sufi`, `ghazal`, `bhajan`, `bhojpuri`, `garhwali`). |
+
+### Navrasa 5000 (`India/Punjabi_Pop`)
+
+| Field | Detail |
+|---|---|
+| **Title** | Navrasa 5000 Music Dataset (`beastLucifer/navrasa-5000-dataset`) |
+| **URL** | https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset |
+| **Licence** | CC0-1.0 |
+| **Usage in project** | Optional extended dataset providing 100 `.wav` clips from `India/Punjabi_Pop.zip` for `punjabi` genre classification. |
+
 ---
 
 ## 2. Python Libraries
