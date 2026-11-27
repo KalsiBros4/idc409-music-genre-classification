@@ -29,8 +29,13 @@ cells.append(md("""\
 ### Classify songs into genres using extracted audio features
 
 **Course**: IDC409  
-**Dataset**: GTZAN Music Genre Classification (Tzanetakis & Cook, 2002) via Kaggle  
-**Dataset URL**: https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification  
+**Datasets**:
+- GTZAN Music Genre Classification (Tzanetakis & Cook, 2002) via Kaggle (`1 000` tracks, `10` genres)
+- Extended Indian & Punjabi Genres: `GACMIS` (`598` tracks, `7` Indian genres) + `Navrasa 5000` (`India/Punjabi_Pop`, `100` tracks)
+**Dataset URLs**:
+- https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification
+- https://github.com/ujjwalll/GACMIS
+- https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset
 
 ---
 
@@ -38,7 +43,7 @@ cells.append(md("""\
 
 Can we automatically assign a music genre label to a song using only its **numerical audio features** — without ever listening to it?
 
-We use the **GTZAN** dataset, which consists of 60 raw columns (57 numerical audio features, `length`, `filename`, and `label`) for 1 000 tracks across 10 genres. The technical sample-count `length` and non-predictive identifier `filename` are excluded from model inputs, leaving 57 predictive audio features. We:
+We start from the **GTZAN** schema (60 raw columns: 57 numerical audio features, `length`, `filename`, and `label`) and extend it with Indian and Punjabi audio tracks extracted into the exact same 57 features (up to `1 698` tracks across `18` genres when `combined_18_genres.csv` is present). The technical sample-count `length` and non-predictive identifier `filename` are excluded from model inputs, leaving 57 predictive audio features. We:
 1. Load and clean the feature table using **NumPy** and **pandas**.
 2. Explore the data visually (**EDA**).
 3. Store and query records using **SQLite**.
@@ -93,9 +98,11 @@ RANDOM_STATE = 42
 np.random.seed(RANDOM_STATE)
 warnings.filterwarnings("ignore")
 
-# Paths
-DATA_PATH = os.path.join("..", "data", "features_30_sec.csv")
-DB_PATH   = os.path.join("..", "data", "music_genre.db")
+# Paths (prefer combined 18-genre GTZAN + GACMIS + Punjabi CSV if present)
+COMBINED_DATA_PATH = os.path.join("..", "data", "combined_18_genres.csv")
+GTZAN_DATA_PATH    = os.path.join("..", "data", "features_30_sec.csv")
+DATA_PATH          = COMBINED_DATA_PATH if os.path.exists(COMBINED_DATA_PATH) else GTZAN_DATA_PATH
+DB_PATH            = os.path.join("..", "data", "music_genre.db")
 
 # Plot style
 sns.set_theme(style="darkgrid", palette="tab10")
@@ -113,7 +120,7 @@ import seaborn; print(f"  seaborn    {seaborn.__version__}")\
 cells.append(md("""\
 ## 1. Data Loading
 
-We load `features_30_sec.csv` from the GTZAN dataset.  
+We load `combined_18_genres.csv` when available (merging GTZAN with Indian/Hindi `GACMIS` genres and `Navrasa Punjabi_Pop`), or fall back to `features_30_sec.csv` from GTZAN.  
 Each row represents one 30-second audio clip; each column is a pre-extracted audio feature or metadata field.
 
 > **If the file is missing**, follow the download instructions in `data/README.md`.\
@@ -126,8 +133,9 @@ if not os.path.exists(DATA_PATH):
         "  features_30_sec.csv  from Kaggle and place it in the data/ folder."
     )
 
+print(f"Loading dataset from: {DATA_PATH}")
 df_raw = pd.read_csv(DATA_PATH)
-print(f"Shape: {df_raw.shape}  ({df_raw.shape[0]} tracks, {df_raw.shape[1]} columns)")
+print(f"Shape: {df_raw.shape}  ({df_raw.shape[0]} tracks, {df_raw.shape[1]} columns, {df_raw['label'].nunique()} genres)")
 df_raw.head(3)\
 """))
 
@@ -240,18 +248,18 @@ cells.append(md("""\
 ### 3.1 Genre class balance
 
 **What we're showing**: count of tracks per genre.  
-**What we see**: each genre has exactly 100 tracks — a perfectly balanced dataset.  
-**Conclusion**: no class-imbalance weighting is necessary, and accuracy is a fair metric alongside macro F1.\
+**What we see**: GTZAN genres and `punjabi` / `bollywood_rap` have 100 tracks each, while the remaining `GACMIS` Indian genres range from 68 to 97 tracks.  
+**Conclusion**: stratified splitting and macro-F1 ensure every genre contributes fairly to evaluation.\
 """))
 cells.append(code("""\
 genre_counts = df[TARGET_COL].value_counts().sort_values()
 genres_ordered = genre_counts.index.tolist()
 
-fig, ax = plt.subplots(figsize=(8, 4))
+fig, ax = plt.subplots(figsize=(9, max(4, 0.36 * len(genre_counts))))
 bars = ax.barh(genre_counts.index, genre_counts.values,
-               color=sns.color_palette("tab10", len(genre_counts)))
+               color=sns.color_palette("husl", len(genre_counts)))
 ax.set_xlabel("Number of tracks")
-ax.set_title("Track count per genre (GTZAN, N=1000)")
+ax.set_title(f"Track count per genre (N={len(df)}, {len(genre_counts)} genres)")
 ax.bar_label(bars, padding=3, fmt="%d")
 plt.tight_layout()
 plt.savefig("../data/eda_genre_balance.png", bbox_inches="tight")
@@ -268,13 +276,13 @@ cells.append(md("""\
 **Limitation**: tempo is estimated by a librosa algorithm and may not perfectly reflect a human listener's perception of beat, especially for irregular rhythms.\
 """))
 cells.append(code("""\
-fig, ax = plt.subplots(figsize=(10, 5))
+fig, ax = plt.subplots(figsize=(12, 5))
 sns.boxplot(data=df, x=TARGET_COL, y="tempo", order=genres_ordered,
-            palette="tab10", ax=ax)
+            palette="husl", ax=ax)
 ax.set_title("Tempo (BPM) by genre")
 ax.set_xlabel("Genre")
 ax.set_ylabel("Tempo (BPM)")
-plt.xticks(rotation=30, ha="right")
+plt.xticks(rotation=35, ha="right")
 plt.tight_layout()
 plt.savefig("../data/eda_tempo.png", bbox_inches="tight")
 plt.show()\
@@ -289,13 +297,13 @@ cells.append(md("""\
 **Limitation**: a high spectral centroid does not uniquely identify a genre — some pop tracks also have high centroids.\
 """))
 cells.append(code("""\
-fig, ax = plt.subplots(figsize=(10, 5))
+fig, ax = plt.subplots(figsize=(12, 5))
 sns.violinplot(data=df, x=TARGET_COL, y="spectral_centroid_mean",
-               order=genres_ordered, palette="tab10", ax=ax)
+               order=genres_ordered, palette="husl", ax=ax)
 ax.set_title("Spectral Centroid Mean by genre")
 ax.set_xlabel("Genre")
 ax.set_ylabel("Spectral centroid (Hz)")
-plt.xticks(rotation=30, ha="right")
+plt.xticks(rotation=35, ha="right")
 plt.tight_layout()
 plt.savefig("../data/eda_spectral_centroid.png", bbox_inches="tight")
 plt.show()\
@@ -316,13 +324,13 @@ cells.append(md("""\
 - In contrast, rock and metal employ heavy compression, distortion harmonics, and equalization boosts that populate the broad spectral envelope, elevating MFCC 1 values across frequency bands.\
 """))
 cells.append(code("""\
-fig, ax = plt.subplots(figsize=(10, 5))
+fig, ax = plt.subplots(figsize=(12, 5))
 sns.boxplot(data=df, x=TARGET_COL, y="mfcc1_mean",
-            order=genres_ordered, palette="tab10", ax=ax)
+            order=genres_ordered, palette="husl", ax=ax)
 ax.set_title("MFCC 1 Mean by genre")
 ax.set_xlabel("Genre")
 ax.set_ylabel("MFCC 1 mean")
-plt.xticks(rotation=30, ha="right")
+plt.xticks(rotation=35, ha="right")
 plt.tight_layout()
 plt.savefig("../data/eda_mfcc1.png", bbox_inches="tight")
 plt.show()\
@@ -400,7 +408,7 @@ print("Database created:", DB_PATH)\
 """))
 
 # ── Cell 15 — DB Write ────────────────────────────────────────────────────────
-cells.append(md("### 4.1 Write — INSERT all 1 000 songs"))
+cells.append(md("### 4.1 Write — INSERT all tracks into SQLite"))
 cells.append(code("""\
 # Prepare the DataFrame with the columns the DB expects.
 # The dataset uses 'label' as the genre column; we rename it to 'genre'
@@ -512,7 +520,7 @@ models = {
     "Logistic Regression": Pipeline([
         ("scaler", StandardScaler()),
         ("clf", LogisticRegression(max_iter=2000, random_state=RANDOM_STATE,
-                                   multi_class="multinomial", solver="lbfgs", C=1.0))
+                                   solver="lbfgs", C=1.0))
     ]),
     "SVM (RBF)": Pipeline([
         ("scaler", StandardScaler()),
@@ -620,7 +628,7 @@ cells.append(code("""\
 genre_labels = sorted(df[TARGET_COL].unique())
 cm = confusion_matrix(y_test, y_pred_best, labels=genre_labels)
 
-fig, ax = plt.subplots(figsize=(10, 8))
+fig, ax = plt.subplots(figsize=(13, 11))
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=genre_labels)
 disp.plot(ax=ax, cmap="Blues", colorbar=True, xticks_rotation=45)
 ax.set_title(f"Confusion matrix — {best_model_name} (test set)")
@@ -683,7 +691,7 @@ reduced_models = {
         ("scaler", StandardScaler()),
         ("select", SelectKBest(f_classif, k=K_FEATURES)),
         ("clf", LogisticRegression(max_iter=2000, random_state=RANDOM_STATE,
-                                    multi_class="multinomial", solver="lbfgs", C=1.0))
+                                    solver="lbfgs", C=1.0))
     ]),
     "SVM (reduced)": Pipeline([
         ("scaler", StandardScaler()),
@@ -812,9 +820,10 @@ recommend_similar(query)\
 """))
 
 cells.append(code("""\
-# Another example — first blues track
-query2 = df[df[TARGET_COL] == "blues"]["filename"].iloc[0]
-print(f"Query track : {query2}  (genre: blues)")
+# Another example — first blues or punjabi track
+demo_genre = "punjabi" if "punjabi" in df[TARGET_COL].values else "blues"
+query2 = df[df[TARGET_COL] == demo_genre]["filename"].iloc[0]
+print(f"Query track : {query2}  (genre: {demo_genre})")
 print()
 recommend_similar(query2)\
 """))
@@ -882,6 +891,8 @@ cells.append(md("""\
 
 - **GTZAN dataset**: G. Tzanetakis and P. Cook, "Musical genre classification of audio signals," *IEEE Transactions on Speech and Audio Processing*, 10(5):293–302, 2002.  
   Kaggle page by Andrada Olteanu: https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification
+- **GACMIS Indian music dataset**: https://github.com/ujjwalll/GACMIS (598 tracks across 7 Indian genres).
+- **Navrasa 5000 (`India/Punjabi_Pop`)**: https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset (CC0-1.0; 100 Punjabi tracks).
 - **scikit-learn**: Pedregosa et al., *JMLR* 12, pp. 2825–2830, 2011.
 - **NumPy, pandas, Matplotlib, Seaborn** — see `CITATIONS.md` for full references and licences.
 
