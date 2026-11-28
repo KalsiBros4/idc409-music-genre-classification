@@ -66,25 +66,28 @@ idc409-music-genre-classification/
 
 The dataset file is **not committed** to this repository (redistribution terms). See `data/README.md` for download instructions.
 
-### Extended Dataset — 16 True Musical Genres (GTZAN + GACMIS + Navrasa + Soul-RnB + Hindustani Raga)
+### Extended Dataset — 16 True Musical Genres (RMS-Normalized Raw Audio Corpus)
 
-Language-specific buckets are mapped into **16 language-agnostic musical genres** so songs are classified by musical style rather than language:
+Language-specific buckets are replaced by **16 language-agnostic musical genres** extracted uniformly with RMS loudness normalization (`target_rms = 0.12`) across curated single-label datasets (`GTZAN`, `Metal_RAW_AUDIO`, `FMA-small`, `MTG-Jamendo`, `Soul-RnB`, `Hindustani Raga`, `GACMIS`, and `Navrasa 5000`):
 
 | Musical Genre | Sources & Track Counts |
 |---|---|
-| `pop` (140) | GTZAN `pop` (60) + `GACMIS` Bollywood Romantic (40) + `Navrasa` Punjabi Pop (40) |
-| `hip_hop_rap` (142) | GTZAN `hiphop` (60) + `GACMIS` Bollywood Rap (40) + `Navrasa` Desi Hip-Hop (42) |
-| `electronic_edm` (120) | GTZAN `disco` (50) + `Navrasa` Techno (70) |
-| `trap` (100) | `Navrasa` Phonk / Trap (100) |
-| `soul_rnb` (94) | Hugging Face `ylacombe/music_genres_Soul-RnB` (94) |
-| `folk_traditional` (120) | `GACMIS` Bhojpuri Folk (60) + Garhwali Folk (60) |
-| `indian_classical` (120) | Hugging Face `neerajaabhyankar/hindustani-raag-small` (80) + `GACMIS` Ghazal (40) |
+| `pop` (120) | GTZAN `pop` (70) + `Navrasa` Punjabi Pop (35) + `GACMIS` Bollywood Romantic (15) |
+| `hip_hop_rap` (125) | GTZAN `hiphop` (50) + MTG-Jamendo `hiphop`/`rap` (30) + `Navrasa` Desi Hip-Hop (25) + `GACMIS` Bollywood Rap (20) |
+| `electronic_edm` (120) | `Navrasa` Techno (65) + MTG-Jamendo Electronic/EDM (35) + GTZAN `disco` (20) |
+| `trap` (90) | `Navrasa` Phonk / Trap (90) |
+| `soul_rnb` (88) | Hugging Face `ylacombe/music_genres_Soul-RnB` (88) |
+| `rock` (120) | GTZAN `rock` (70) + FMA-small `Rock` (50) |
+| `metal` (145) | GTZAN `metal` (70) + Hugging Face `GaspardNW/Metal_RAW_AUDIO` (75) |
+| `folk_traditional` (110) | FMA-small `Folk` (50) + MTG-Jamendo `folk` (60) |
+| `classical` (125) | GTZAN `classical` (50) + MTG-Jamendo `classical` (75) |
+| `indian_classical` (125) | Hugging Face `neerajaabhyankar/hindustani-raag-small` (95) + `GACMIS` Ghazal (30) |
 | `sufi_qawwali` (84) | `GACMIS` Sufi (84) |
 | `religious` (68) | `GACMIS` Bhajan (68) |
-| `reggae_caribbean` (100) | GTZAN `reggae` (100) |
-| `blues`, `classical`, `country`, `jazz`, `metal`, `rock` | GTZAN (100 each) |
-| **Combined total** | **1 688 rows × 60 columns (16 musical genres)** |
-| **Combined results** | SVM (RBF): CV Macro-F1 = 0.6749, Test Accuracy = 0.6538, Test Macro-F1 = 0.6638 |
+| `reggae_caribbean` (99) | GTZAN `reggae` (99) |
+| `blues` (99), `country` (99), `jazz` (99) | GTZAN raw audio (99 each; `jazz.00054.wav` skipped) |
+| **Combined total** | **1 716 rows × 60 columns (16 musical genres)** |
+| **Combined results** | SVM (RBF): CV Macro-F1 = 0.6826, Test Accuracy = 0.6715, Test Macro-F1 = 0.6581 |
 
 ---
 
