@@ -24,16 +24,32 @@ This file records all datasets, documentation, papers, and third-party code cons
 |---|---|
 | **Title** | GACMIS — Genre Automated Classification of Indian Songs |
 | **URL** | https://github.com/ujjwalll/GACMIS |
-| **Usage in project** | Optional extended dataset providing 598 `.opus` tracks across 7 Indian/Hindi genres (`bollywood_rap`, `bollywood_romantic`, `sufi`, `ghazal`, `bhajan`, `bhojpuri`, `garhwali`). |
+| **Usage in project** | Provides Bollywood, Sufi, Ghazal, Bhajan, and regional folk tracks mapped to true musical genres (`pop`, `hip_hop_rap`, `sufi_qawwali`, `indian_classical`, `religious`, `folk_traditional`). |
 
-### Navrasa 5000 (`India/Punjabi_Pop`)
+### Navrasa 5000 (`Punjabi_Pop`, `Desi_Hip-Hop`, `Techno`, `Phonk`)
 
 | Field | Detail |
 |---|---|
 | **Title** | Navrasa 5000 Music Dataset (`beastLucifer/navrasa-5000-dataset`) |
 | **URL** | https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset |
 | **Licence** | CC0-1.0 |
-| **Usage in project** | Optional extended dataset providing 100 `.wav` clips from `India/Punjabi_Pop.zip` for `punjabi` genre classification. |
+| **Usage in project** | Provides tracks across `Punjabi_Pop` (`pop`), `Desi_Hip-Hop` (`hip_hop_rap`), `Techno` (`electronic_edm`), and `Phonk` (`trap`). |
+
+### Soul & R&B (`ylacombe/music_genres_Soul-RnB`)
+
+| Field | Detail |
+|---|---|
+| **Title** | FMA Soul-RnB Subset (`ylacombe/music_genres_Soul-RnB`) |
+| **URL** | https://huggingface.co/datasets/ylacombe/music_genres_Soul-RnB |
+| **Usage in project** | Provides 94 tracks for the `soul_rnb` genre class. |
+
+### Hindustani Raga (`neerajaabhyankar/hindustani-raag-small`)
+
+| Field | Detail |
+|---|---|
+| **Title** | Hindustani Raag Small (`neerajaabhyankar/hindustani-raag-small`) |
+| **URL** | https://huggingface.co/datasets/neerajaabhyankar/hindustani-raag-small |
+| **Usage in project** | Provides Hindustani classical raga `.mp3` clips for `indian_classical`. |
 
 ---
 

@@ -66,15 +66,26 @@ idc409-music-genre-classification/
 
 The dataset file is **not committed** to this repository (redistribution terms). See `data/README.md` for download instructions.
 
-### Extended Datasets — Indian & Punjabi Music Genres (GACMIS + Navrasa)
+### Extended Dataset — 16 True Musical Genres (GTZAN + GACMIS + Navrasa + Soul-RnB + Hindustani Raga)
 
-| Field | Value |
+Language-specific buckets are mapped into **16 language-agnostic musical genres** so songs are classified by musical style rather than language:
+
+| Musical Genre | Sources & Track Counts |
 |---|---|
-| **Indian Genres (GACMIS)** | https://github.com/ujjwalll/GACMIS — 598 `.opus` tracks across 7 genres: `bollywood_rap` (100), `ghazal` (97), `garhwali` (90), `sufi` (84), `bollywood_romantic` (81), `bhojpuri` (78), `bhajan` (68) |
-| **Punjabi Pop (Navrasa 5000)** | https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset (`India/Punjabi_Pop.zip`, CC0-1.0) — 100 `.wav` clips extracted as `punjabi` |
-| **Feature Extraction** | 30s centered audio clip extracted into the same 57 GTZAN numerical features |
-| **Combined total** | 1 698 rows × 60 columns (18 genres when merged with GTZAN) |
-| **Combined results** | SVM (RBF): CV Macro-F1 = 0.6481, Test Accuracy = 0.6765, Test Macro-F1 = 0.6726 |
+| `pop` (140) | GTZAN `pop` (60) + `GACMIS` Bollywood Romantic (40) + `Navrasa` Punjabi Pop (40) |
+| `hip_hop_rap` (142) | GTZAN `hiphop` (60) + `GACMIS` Bollywood Rap (40) + `Navrasa` Desi Hip-Hop (42) |
+| `electronic_edm` (120) | GTZAN `disco` (50) + `Navrasa` Techno (70) |
+| `trap` (100) | `Navrasa` Phonk / Trap (100) |
+| `soul_rnb` (94) | Hugging Face `ylacombe/music_genres_Soul-RnB` (94) |
+| `folk_traditional` (120) | `GACMIS` Bhojpuri Folk (60) + Garhwali Folk (60) |
+| `indian_classical` (120) | Hugging Face `neerajaabhyankar/hindustani-raag-small` (80) + `GACMIS` Ghazal (40) |
+| `sufi_qawwali` (84) | `GACMIS` Sufi (84) |
+| `religious` (68) | `GACMIS` Bhajan (68) |
+| `reggae_caribbean` (100) | GTZAN `reggae` (100) |
+| `blues`, `classical`, `country`, `jazz`, `metal`, `rock` | GTZAN (100 each) |
+| **Combined total** | **1 688 rows × 60 columns (16 musical genres)** |
+| **Combined results** | SVM (RBF): CV Macro-F1 = 0.6749, Test Accuracy = 0.6538, Test Macro-F1 = 0.6638 |
+
 ---
 
 ## Setup and installation
