@@ -51,6 +51,31 @@ This file records all datasets, documentation, papers, and third-party code cons
 | **URL** | https://huggingface.co/datasets/neerajaabhyankar/hindustani-raag-small |
 | **Usage in project** | Provides Hindustani classical raga `.mp3` clips for `indian_classical`. |
 
+### Heavy Metal Audio (`GaspardNW/Metal_RAW_AUDIO`)
+
+| Field | Detail |
+|---|---|
+| **Title** | Metal Raw Audio (`GaspardNW/Metal_RAW_AUDIO`) |
+| **URL** | https://huggingface.co/datasets/GaspardNW/Metal_RAW_AUDIO |
+| **Usage in project** | Provides modern heavy metal `.wav` tracks to complement GTZAN `metal` and eliminate loudness-mastering bias. |
+
+### Free Music Archive Small (`lewtun/music_genres_small`)
+
+| Field | Detail |
+|---|---|
+| **Title** | FMA-Small Music Genres (`lewtun/music_genres_small`) |
+| **URL** | https://huggingface.co/datasets/lewtun/music_genres_small |
+| **Usage in project** | Provides Creative Commons `Rock` and `Folk` tracks for the 16-genre RMS-normalized corpus. |
+
+### MTG-Jamendo Dataset (`rkstgr/mtg-jamendo`, `vtsouval/mtg_jamendo_autotagging`)
+
+| Field | Detail |
+|---|---|
+| **Title** | MTG-Jamendo Automatic Music Tagging Corpus |
+| **Paper** | D. Bogdanov et al., "The MTG-Jamendo Dataset for Automatic Music Tagging," ICML 2019 |
+| **URL** | https://huggingface.co/datasets/rkstgr/mtg-jamendo |
+| **Usage in project** | Provides `classical`, `folk`, `electronic`/`edm`, and `hiphop`/`rap` tracks. |
+
 ---
 
 ## 2. Python Libraries
