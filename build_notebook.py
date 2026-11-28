@@ -30,12 +30,14 @@ cells.append(md("""\
 
 **Course**: IDC409  
 **Datasets**:
-- GTZAN Music Genre Classification (Tzanetakis & Cook, 2002) via Kaggle (`1 000` tracks, `10` genres)
-- Extended Indian & Punjabi Genres: `GACMIS` (`598` tracks, `7` Indian genres) + `Navrasa 5000` (`India/Punjabi_Pop`, `100` tracks)
+- GTZAN Music Genre Classification (Tzanetakis & Cook, 2002) via Kaggle
+- Extended Musical Genre Sources: `GACMIS`, `Navrasa 5000` (`Punjabi_Pop`, `Desi_Hip-Hop`, `Techno`, `Phonk`), `ylacombe/music_genres_Soul-RnB`, and `neerajaabhyankar/hindustani-raag-small`
 **Dataset URLs**:
 - https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification
 - https://github.com/ujjwalll/GACMIS
 - https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset
+- https://huggingface.co/datasets/ylacombe/music_genres_Soul-RnB
+- https://huggingface.co/datasets/neerajaabhyankar/hindustani-raag-small
 
 ---
 
@@ -43,7 +45,7 @@ cells.append(md("""\
 
 Can we automatically assign a music genre label to a song using only its **numerical audio features** — without ever listening to it?
 
-We start from the **GTZAN** schema (60 raw columns: 57 numerical audio features, `length`, `filename`, and `label`) and extend it with Indian and Punjabi audio tracks extracted into the exact same 57 features (up to `1 698` tracks across `18` genres when `combined_18_genres.csv` is present). The technical sample-count `length` and non-predictive identifier `filename` are excluded from model inputs, leaving 57 predictive audio features. We:
+We start from the **GTZAN** schema (60 raw columns: 57 numerical audio features, `length`, `filename`, and `label`) and unify multi-cultural audio sources into **16 true musical genres** (`1 688` tracks when `combined_16_musical_genres.csv` is present, classifying by musical style across languages rather than by language alone). The technical sample-count `length` and non-predictive identifier `filename` are excluded from model inputs, leaving 57 predictive audio features. We:
 1. Load and clean the feature table using **NumPy** and **pandas**.
 2. Explore the data visually (**EDA**).
 3. Store and query records using **SQLite**.
@@ -98,8 +100,8 @@ RANDOM_STATE = 42
 np.random.seed(RANDOM_STATE)
 warnings.filterwarnings("ignore")
 
-# Paths (prefer combined 18-genre GTZAN + GACMIS + Punjabi CSV if present)
-COMBINED_DATA_PATH = os.path.join("..", "data", "combined_18_genres.csv")
+# Paths (prefer combined 16-musical-genre CSV if present)
+COMBINED_DATA_PATH = os.path.join("..", "data", "combined_16_musical_genres.csv")
 GTZAN_DATA_PATH    = os.path.join("..", "data", "features_30_sec.csv")
 DATA_PATH          = COMBINED_DATA_PATH if os.path.exists(COMBINED_DATA_PATH) else GTZAN_DATA_PATH
 DB_PATH            = os.path.join("..", "data", "music_genre.db")
@@ -120,7 +122,7 @@ import seaborn; print(f"  seaborn    {seaborn.__version__}")\
 cells.append(md("""\
 ## 1. Data Loading
 
-We load `combined_18_genres.csv` when available (merging GTZAN with Indian/Hindi `GACMIS` genres and `Navrasa Punjabi_Pop`), or fall back to `features_30_sec.csv` from GTZAN.  
+We load `combined_16_musical_genres.csv` when available (16 language-agnostic musical genres built from GTZAN, GACMIS, Navrasa 5000, Soul-RnB, and Hindustani Ragas), or fall back to `features_30_sec.csv` from GTZAN.  
 Each row represents one 30-second audio clip; each column is a pre-extracted audio feature or metadata field.
 
 > **If the file is missing**, follow the download instructions in `data/README.md`.\
@@ -247,8 +249,8 @@ We answer concrete questions about the data before training any model:
 cells.append(md("""\
 ### 3.1 Genre class balance
 
-**What we're showing**: count of tracks per genre.  
-**What we see**: GTZAN genres and `punjabi` / `bollywood_rap` have 100 tracks each, while the remaining `GACMIS` Indian genres range from 68 to 97 tracks.  
+**What we're showing**: count of tracks per musical genre.  
+**What we see**: all 16 genres span between 68 and 142 tracks (`pop`, `hip_hop_rap`, `electronic_edm`, `trap`, `soul_rnb`, `folk_traditional`, `indian_classical`, `sufi_qawwali`, `religious`, `reggae_caribbean`, plus the core GTZAN genres).  
 **Conclusion**: stratified splitting and macro-F1 ensure every genre contributes fairly to evaluation.\
 """))
 cells.append(code("""\
@@ -491,8 +493,8 @@ cells.append(md("""\
 > **Data leakage prevention**: the `StandardScaler` and `SelectKBest` are always inside the `Pipeline`, so they are fitted only on training data during cross-validation and the final training run.\
 """))
 cells.append(code("""\
-X = df[FEATURE_COLS].values.astype(float)
-y = df[TARGET_COL].values
+X = np.asarray(df[FEATURE_COLS], dtype=float)
+y = np.asarray(df[TARGET_COL].astype(str).tolist(), dtype=object)
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y
@@ -820,8 +822,8 @@ recommend_similar(query)\
 """))
 
 cells.append(code("""\
-# Another example — first blues or punjabi track
-demo_genre = "punjabi" if "punjabi" in df[TARGET_COL].values else "blues"
+# Another example — first indian_classical or blues track
+demo_genre = "indian_classical" if "indian_classical" in df[TARGET_COL].values else "blues"
 query2 = df[df[TARGET_COL] == demo_genre]["filename"].iloc[0]
 print(f"Query track : {query2}  (genre: {demo_genre})")
 print()
@@ -891,8 +893,10 @@ cells.append(md("""\
 
 - **GTZAN dataset**: G. Tzanetakis and P. Cook, "Musical genre classification of audio signals," *IEEE Transactions on Speech and Audio Processing*, 10(5):293–302, 2002.  
   Kaggle page by Andrada Olteanu: https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification
-- **GACMIS Indian music dataset**: https://github.com/ujjwalll/GACMIS (598 tracks across 7 Indian genres).
-- **Navrasa 5000 (`India/Punjabi_Pop`)**: https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset (CC0-1.0; 100 Punjabi tracks).
+- **GACMIS Indian music dataset**: https://github.com/ujjwalll/GACMIS.
+- **Navrasa 5000 (`Punjabi_Pop`, `Desi_Hip-Hop`, `Techno`, `Phonk`)**: https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset (CC0-1.0).
+- **Soul & R&B (`ylacombe/music_genres_Soul-RnB`)**: https://huggingface.co/datasets/ylacombe/music_genres_Soul-RnB.
+- **Hindustani Raag (`neerajaabhyankar/hindustani-raag-small`)**: https://huggingface.co/datasets/neerajaabhyankar/hindustani-raag-small.
 - **scikit-learn**: Pedregosa et al., *JMLR* 12, pp. 2825–2830, 2011.
 - **NumPy, pandas, Matplotlib, Seaborn** — see `CITATIONS.md` for full references and licences.
 
