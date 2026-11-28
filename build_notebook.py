@@ -30,10 +30,13 @@ cells.append(md("""\
 
 **Course**: IDC409  
 **Datasets**:
-- GTZAN Music Genre Classification (Tzanetakis & Cook, 2002) via Kaggle
-- Extended Musical Genre Sources: `GACMIS`, `Navrasa 5000` (`Punjabi_Pop`, `Desi_Hip-Hop`, `Techno`, `Phonk`), `ylacombe/music_genres_Soul-RnB`, and `neerajaabhyankar/hindustani-raag-small`
+- GTZAN Music Genre Classification (Tzanetakis & Cook, 2002) via Kaggle & `marsyas/gtzan` raw audio
+- Extended Musical Genre Sources: `GaspardNW/Metal_RAW_AUDIO`, `FMA-small` (`lewtun/music_genres_small`), `MTG-Jamendo` (`rkstgr/mtg-jamendo`), `ylacombe/music_genres_Soul-RnB`, `neerajaabhyankar/hindustani-raag-small`, `GACMIS`, and `Navrasa 5000`
 **Dataset URLs**:
 - https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification
+- https://huggingface.co/datasets/GaspardNW/Metal_RAW_AUDIO
+- https://huggingface.co/datasets/lewtun/music_genres_small
+- https://huggingface.co/datasets/rkstgr/mtg-jamendo
 - https://github.com/ujjwalll/GACMIS
 - https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset
 - https://huggingface.co/datasets/ylacombe/music_genres_Soul-RnB
@@ -45,7 +48,7 @@ cells.append(md("""\
 
 Can we automatically assign a music genre label to a song using only its **numerical audio features** — without ever listening to it?
 
-We start from the **GTZAN** schema (60 raw columns: 57 numerical audio features, `length`, `filename`, and `label`) and unify multi-cultural audio sources into **16 true musical genres** (`1 688` tracks when `combined_16_musical_genres.csv` is present, classifying by musical style across languages rather than by language alone). The technical sample-count `length` and non-predictive identifier `filename` are excluded from model inputs, leaving 57 predictive audio features. We:
+We start from the **GTZAN** schema (60 raw columns: 57 numerical audio features, `length`, `filename`, and `label`) and unify multi-cultural audio sources with uniform **RMS loudness normalization** (`target_rms = 0.12`) into **16 true musical genres** (`1 716` tracks when `combined_16_musical_genres.csv` is present, classifying by musical style across languages rather than by language alone). The technical sample-count `length` and non-predictive identifier `filename` are excluded from model inputs, leaving 57 predictive audio features. We:
 1. Load and clean the feature table using **NumPy** and **pandas**.
 2. Explore the data visually (**EDA**).
 3. Store and query records using **SQLite**.
@@ -250,7 +253,7 @@ cells.append(md("""\
 ### 3.1 Genre class balance
 
 **What we're showing**: count of tracks per musical genre.  
-**What we see**: all 16 genres span between 68 and 142 tracks (`pop`, `hip_hop_rap`, `electronic_edm`, `trap`, `soul_rnb`, `folk_traditional`, `indian_classical`, `sufi_qawwali`, `religious`, `reggae_caribbean`, plus the core GTZAN genres).  
+**What we see**: all 16 genres span between 68 and 145 tracks (`pop`, `hip_hop_rap`, `electronic_edm`, `trap`, `soul_rnb`, `folk_traditional`, `indian_classical`, `sufi_qawwali`, `religious`, `reggae_caribbean`, `metal`, `rock`, `blues`, `classical`, `country`, `jazz`).  
 **Conclusion**: stratified splitting and macro-F1 ensure every genre contributes fairly to evaluation.\
 """))
 cells.append(code("""\
@@ -893,6 +896,9 @@ cells.append(md("""\
 
 - **GTZAN dataset**: G. Tzanetakis and P. Cook, "Musical genre classification of audio signals," *IEEE Transactions on Speech and Audio Processing*, 10(5):293–302, 2002.  
   Kaggle page by Andrada Olteanu: https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification
+- **Heavy Metal Audio (`GaspardNW/Metal_RAW_AUDIO`)**: https://huggingface.co/datasets/GaspardNW/Metal_RAW_AUDIO.
+- **Free Music Archive Small (`lewtun/music_genres_small`)**: https://huggingface.co/datasets/lewtun/music_genres_small.
+- **MTG-Jamendo (`rkstgr/mtg-jamendo`)**: https://huggingface.co/datasets/rkstgr/mtg-jamendo.
 - **GACMIS Indian music dataset**: https://github.com/ujjwalll/GACMIS.
 - **Navrasa 5000 (`Punjabi_Pop`, `Desi_Hip-Hop`, `Techno`, `Phonk`)**: https://huggingface.co/datasets/beastLucifer/navrasa-5000-dataset (CC0-1.0).
 - **Soul & R&B (`ylacombe/music_genres_Soul-RnB`)**: https://huggingface.co/datasets/ylacombe/music_genres_Soul-RnB.
